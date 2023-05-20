@@ -1,0 +1,225 @@
+public with sharing class userTable {
+   
+   /* 
+   @AuraEnabled(cacheable=true)
+    public static List<User> userReport(){
+        list<User> usr = new list<User>();
+        usr = [select Id, SM_BOOKING__c,Total_assigned_tasks__c,RM_BOOKING__c, Name, CompanyName, Division, Department,IsActive  from User where IsActive = true AND (NOT Name LIKE '%Guest User%') AND (NOT Name LIKE '%Integration%') AND (NOT Name LIKE '%System%') AND (NOT Name LIKE '%Automated Process%') ];
+        return usr;
+    }
+*/
+//////////////// project filter
+@AuraEnabled(cacheable=true)
+public static List<Project__c> projectComboBox(){
+    List<Project__c> listOfProject  = [select Id,Name from Project__c];
+    return listOfProject;
+}
+
+
+////////////////// sending to wire to display
+    @AuraEnabled(cacheable=true)
+    public static List<user_Report_Data_for_LWC__c> UserReportDataLwc( string projectName){
+        List<user_Report_Data_for_LWC__c> userReportListToDislay  = [select Id,Company_Name__c,Quotation_Created_By_Total__c,Opportunity_Created_By_Total__c,Opportunity_Owner_Total__c,Quotation_Owner_Total__c, Department__c, Division__c, Total_Booking_as_RM__c, Total_Booking_as_SM__c, Total_Task__c ,Name__c from user_Report_Data_for_LWC__c where Division__c =: projectName];
+        return userReportListToDislay;
+    }
+
+    ////////////////delete records 
+    public static  void deleteData(){
+        List<user_Report_Data_for_LWC__c> UserNameList = [select Id , Name__c from user_Report_Data_for_LWC__c ]; 
+        List<user_Report_Data_for_LWC__c> deletelist = new List<user_Report_Data_for_LWC__c>();
+        for(user_Report_Data_for_LWC__c d : UserNameList){
+            deletelist.add(d);
+        }
+        delete deletelist;
+    }
+
+    //////////////////method for 1 use only 
+
+    public static  void createDataForUserReportDataLwc(){
+        List<User> userList = new List<User>();
+        set<string> userset = new set<string>();
+        List<user_Report_Data_for_LWC__c> UserNameList = [select Id , Name__c from user_Report_Data_for_LWC__c ]; 
+        for(user_Report_Data_for_LWC__c n : UserNameList){
+            userset.add(n.Name__c);
+        }
+        userList = [select Id, SM_BOOKING__c, RM_BOOKING__c,Total_assigned_tasks__c ,Name, CompanyName, Division, Department,IsActive  from User where IsActive = true AND Name NOT IN : userset  AND (NOT Name LIKE '%Guest User%') AND (NOT Name LIKE '%Integration%') AND (NOT Name LIKE '%System%') AND (NOT Name LIKE '%Automated Process%')];
+        
+        List<user_Report_Data_for_LWC__c> userReportList = new List<user_Report_Data_for_LWC__c>();
+        for(User u : userList){
+            user_Report_Data_for_LWC__c report = new user_Report_Data_for_LWC__c();
+            report.Name__c = u.Name;
+            report.Total_Booking_as_SM__c = u.SM_BOOKING__c;
+            report.Company_Name__c = u.CompanyName;
+            report.Division__c = u.Division;
+            report.Department__c = u.Department;
+            report.Total_Booking_as_RM__c = u.RM_BOOKING__c;
+            report.Total_Task__c = u.Total_assigned_tasks__c;
+            userReportList.add(report);
+        }
+        database.upsert(userReportList);
+        system.debug('userReportList'+userReportList);
+       
+    }
+
+////////////////// all fields update //////////////////////////////////////////////////////////////
+public static void allFieldsUpdate(){
+    List<user_Report_Data_for_LWC__c> userDataForLWCList  = [select Id,Company_Name__c, Department__c, Division__c,Quotation_Owner_Total__c,Quotation_Created_By_Total__c, Total_Booking_as_RM__c, Total_Booking_as_SM__c, Total_Task__c ,Name__c,Opportunity_Owner_Total__c,Opportunity_Created_By_Total__c from user_Report_Data_for_LWC__c ];
+    List<user_Report_Data_for_LWC__c> opportunityOwnerListToUpdate = new List<user_Report_Data_for_LWC__c>();
+    List<user_Report_Data_for_LWC__c> opportunityOwnerListToUpdate1 = new List<user_Report_Data_for_LWC__c>();
+    List<user_Report_Data_for_LWC__c> opportunityOwnerListToUpdate2 = new List<user_Report_Data_for_LWC__c>();
+
+
+
+////////////////// opportunity owner total update 
+
+for(user_Report_Data_for_LWC__c usr : userDataForLWCList){
+    integer sm = 0;
+sm = [Select count() FROM Opportunity where Owner.Name  =: usr.Name__c];
+ usr.Opportunity_Owner_Total__c = sm;
+ opportunityOwnerListToUpdate.add(usr);
+}
+Database.update(opportunityOwnerListToUpdate);
+system.debug('opportunityOwnerListToUpdate'+opportunityOwnerListToUpdate);
+
+////////////////// opportunity createdby update 
+for(user_Report_Data_for_LWC__c usr : userDataForLWCList){
+    integer sm1 = 0;
+sm1 = [Select count() FROM Opportunity where CreatedBy.Name   =: usr.Name__c];
+ usr.Opportunity_Created_By_Total__c = sm1;
+ opportunityOwnerListToUpdate1.add(usr);
+}
+Database.update(opportunityOwnerListToUpdate1);
+system.debug('opportunityOwnerListToUpdate'+opportunityOwnerListToUpdate);
+
+////////////////// Quotation owner update 
+for(user_Report_Data_for_LWC__c usr : userDataForLWCList){
+    integer sm2 = 0;
+sm2 = [Select count() FROM Quotation__c where Owner.Name  =: usr.Name__c];
+ usr.Quotation_Owner_Total__c = sm2;
+ opportunityOwnerListToUpdate2.add(usr);
+}
+Database.update(opportunityOwnerListToUpdate2);
+system.debug('opportunityOwnerListToUpdate2'+opportunityOwnerListToUpdate);
+
+
+
+}
+
+/////////////////////// allFieldsUpdate method 2
+public static void allFieldsUpdate1(){
+    List<user_Report_Data_for_LWC__c> userDataForLWCList  = [select Id,Company_Name__c, Department__c, Division__c,Quotation_Owner_Total__c,Quotation_Created_By_Total__c, Total_Booking_as_RM__c, Total_Booking_as_SM__c, Total_Task__c ,Name__c,Opportunity_Owner_Total__c,Opportunity_Created_By_Total__c from user_Report_Data_for_LWC__c ];
+    List<user_Report_Data_for_LWC__c> opportunityOwnerListToUpdate3 = new List<user_Report_Data_for_LWC__c>();
+
+    ////////////////// Quotation createdby
+for(user_Report_Data_for_LWC__c usr : userDataForLWCList){
+    integer sm3 = 0;
+sm3 = [Select count() FROM Quotation__c where CreatedBy.Name  =: usr.Name__c];
+ usr.Quotation_Created_By_Total__c = sm3;
+ opportunityOwnerListToUpdate3.add(usr);
+}
+Database.update(opportunityOwnerListToUpdate3);
+system.debug(opportunityOwnerListToUpdate3);
+}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////   TEST CLASS ///////////////////////////////////////////////////
+@isTest
+public class test_userTable {
+     @isTest
+    public static void allFieldsUpdateTEST(){
+        userTable ABC = NEW userTable();
+        
+        userTable.allFieldsUpdate();
+        userTable.allFieldsUpdate1();
+        userTable.projectComboBox();
+        userTable.UserReportDataLwc('projectName');
+        userTable.deleteData();
+        userTable.createDataForUserReportDataLwc();
+        
+        
+        Integer S = 5;
+         Integer A = 6;
+        userTable.allFieldsUpdate();
+        
+        User u = new User(
+     ProfileId = [SELECT Id FROM Profile WHERE Name = 'Sales'].Id,
+     LastName = 'testUser',
+     Email = 'puser000@amamama.com',
+     MobilePhone = '9158747991',
+     Username = 'puser000@amamama.com' + System.currentTimeMillis(),
+     CompanyName = 'TEST',
+     Title = 'title',
+     Alias = 'alias',
+     TimeZoneSidKey = 'America/Los_Angeles',
+     EmailEncodingKey = 'UTF-8',
+     LanguageLocaleKey = 'en_US',
+     LocaleSidKey = 'en_US',IsActive=true);
+        insert u;
+        
+          ///////create project
+        project__c pr = new project__c();
+        
+        pr.Project_Code__c = 'T31';
+        pr.Name = 'TestProject';
+        pr.Start_Date__c = System.today().addDays(- 5);
+        pr.Project_Stage__c = 'Launch';
+        pr.Address__c = 'My address';
+        pr.Expiry_Days__c = 60;
+        insert pr;
+        
+        opportunity op1 = new opportunity();
+        op1.name = 'testUser';
+        OP1.OwnerId = u.Id; 
+        op1.CloseDate= System.today().addDays(5);
+        op1.StageName='Prospecting';
+        insert op1;
+        
+         opportunity op = new opportunity();
+        op.name = 'testUser';
+        OP.OwnerId = u.Id; 
+        op.CloseDate= System.today().addDays(5);
+        op.StageName='Prospecting';
+        insert op;
+        
+        op.name = 'test2';
+        update op;
+        
+        s = [Select count() FROM Opportunity where Owner.Name  ='testUser'];
+        
+        user_Report_Data_for_LWC__c ur = new user_Report_Data_for_LWC__c();
+        ur.Company_Name__c = 'abc';
+            ur.Department__c = 'hinjewadi';
+            ur.Division__c = 'sales';
+            ur.Name__c = 'abcd';
+            ur.Opportunity_Created_By_Total__c = 1;
+            ur.Opportunity_Owner_Total__c = s;
+            ur.Quotation_Created_By_Total__c = 3;
+            ur.Quotation_Owner_Total__c = 3;
+            ur.Site_Visit_Created_By_total__c = 4;
+            ur.Site_Visit_Owner_Total__c = 5;
+            ur.Total_Booking_as_RM__c = 6;
+            ur.Total_Booking_as_SM__c = 7;
+            ur.Total_Task__c = 8;
+        insert ur;
+        
+        /*
+         List<user_Report_Data_for_LWC__c> opportunityOwnerListToUpdate = new List<user_Report_Data_for_LWC__c>();
+         opportunityOwnerListToUpdate.add(ur);
+        Database.update(opportunityOwnerListToUpdate);
+        */
+  // Integer actualCount = [SELECT COUNT() FROM Opportunity where Owner.Name  = 'testUser'];
+        
+    }
+}
